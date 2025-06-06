@@ -1059,9 +1059,10 @@ ${model.prompt}`
   }
 
   // Filtrage des modèles
-  const categories = ["Tous", ...Array.from(new Set(visualizationModels.map((model) => model.category)))]
+  const categories = ["Tous", ...Array.from(new Set(models.map((model) => model.category)))]
 
-  const filteredModels = visualizationModels.filter((model) => {
+  const filteredModels = models.filter((model) => {
+    if (model.disabled) return false
     const matchesSearch =
       model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       model.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1085,8 +1086,8 @@ ${model.prompt}`
           <div>
             <h1 className="font-bold text-gray-800">Eidos</h1>
             <p className="text-sm text-orange-600">
-              {visualizationModels.length}+ modèles • Modèle actif:{" "}
-              {visualizationModels.find((m) => m.id === activeModel)?.name || "Aucun"}
+              {models.filter(m => !m.disabled).length}+ modèles • Modèle actif:{" "}
+              {models.find((m) => m.id === activeModel)?.name || "Aucun"}
             </p>
           </div>
         </div>
@@ -1104,11 +1105,11 @@ ${model.prompt}`
             <div className="flex items-center space-x-2">
               <Check className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium text-green-800">
-                Modèle actif: {visualizationModels.find((m) => m.id === activeModel)?.name}
+                Modèle actif: {models.find((m) => m.id === activeModel)?.name}
               </span>
             </div>
             <p className="text-xs text-green-600 mt-1">
-              {visualizationModels.find((m) => m.id === activeModel)?.description}
+              {models.find((m) => m.id === activeModel)?.description}
             </p>
           </div>
         )}
@@ -1172,7 +1173,7 @@ ${model.prompt}`
             <div className="flex items-center space-x-2">
               <Zap className="w-4 h-4 text-orange-600" />
               <p className="text-sm font-medium text-gray-800">
-                Modèles de Visualisation ({visualizationModels.length})
+                Modèles de Visualisation ({models.filter(m => !m.disabled).length})
               </p>
             </div>
             <button
@@ -1227,7 +1228,8 @@ ${model.prompt}`
                 <button
                   key={model.id}
                   onClick={() => generateVisualization(model.id)}
-                  disabled={isGeneratingViz}
+                  disabled={isGeneratingViz || model.disabled}
+                  title={model.disabled ? "Modèle incompatible avec les données" : undefined}
                   className={`flex items-center space-x-3 w-full px-3 py-3 text-left border rounded-lg transition-all disabled:opacity-50 group ${
                     isActive
                       ? "bg-gradient-to-r from-green-100 to-emerald-100 border-green-300 ring-2 ring-green-200"
