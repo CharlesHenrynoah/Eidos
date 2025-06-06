@@ -1,4 +1,4 @@
-// File: /Users/charles-henrynoah/Desktop/eidos/Eidos/app/layout.tsx
+// File: /Users/charles-henrynoah/Desktop/eidos1/Eidos/app/layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

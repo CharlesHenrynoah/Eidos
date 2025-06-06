@@ -1,4 +1,4 @@
-// File: /Users/charles-henrynoah/Desktop/eidos/Eidos/app/api/chat/route.ts
+// File: /Users/charles-henrynoah/Desktop/eidos1/Eidos/app/api/chat/route.ts
 import * as entry from '../../../../../app/api/chat/route.js'
 import type { NextRequest } from 'next/server.js'
 

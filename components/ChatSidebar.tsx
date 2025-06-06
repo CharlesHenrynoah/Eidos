@@ -970,7 +970,10 @@ export default function ChatSidebar({ data, columns, onVisualizationChange, onDa
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("Tous")
   const [showAllModels, setShowAllModels] = useState(false)
+  const [showIncompatibleModels, setShowIncompatibleModels] = useState(true)
   const [activeModel, setActiveModel] = useState<string>("scatter3d")
+  const [generatedCode, setGeneratedCode] = useState<string>("")
+  const [showCodeEditor, setShowCodeEditor] = useState<boolean>(false)
 
   // Chat pour l'analyse des données avec Gemini
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
@@ -1013,7 +1016,7 @@ ${model.prompt}`
     })
 
     try {
-      // Envoyer toutes les données pour une visualisation complète
+      // Envoyer toutes les données pour une visualisation complète générée dynamiquement
       const response = await fetch("/api/generate-visualization", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1021,6 +1024,8 @@ ${model.prompt}`
           data: data, // Envoyer toutes les données
           columns,
           userRequest: modelId,
+          modelDescription: model.description,
+          modelRequirements: model.requirements
         }),
       })
 
@@ -1029,6 +1034,12 @@ ${model.prompt}`
       }
 
       const result = await response.json()
+      
+      // Enregistrer le code généré
+      if (result.generatedCode) {
+        setGeneratedCode(result.generatedCode)
+        setShowCodeEditor(true)
+      }
 
       // Appliquer immédiatement la visualisation
       onVisualizationChange(modelId, result)
@@ -1036,7 +1047,9 @@ ${model.prompt}`
       // Ajouter une réponse de confirmation
       await append({
         role: "assistant",
-        content: `✨ Visualisation générée ! **${model.name}** transforme vos ${data.length} entrées en une représentation ${model.category.toLowerCase()} interactive. Explorez les patterns dans l'espace 3D !`,
+        content: `✨ Visualisation générée ! **${model.name}** crée dynamiquement une représentation personnalisée pour vos ${data.length} entrées.
+
+${result.generatedCode ? "*J'ai également généré du code pour cette visualisation que vous pouvez consulter dans l'éditeur.*" : ""}`,
       })
     } catch (error) {
       console.error("Erreur génération visualisation:", error)
@@ -1058,22 +1071,32 @@ ${model.prompt}`
     }
   }
 
-  // Filtrage des modèles
+  // Tri et filtrage des modèles
+  const sortModels = (a: VisualizationModel, b: VisualizationModel) => {
+    // Les modèles compatibles d'abord
+    if (a.disabled && !b.disabled) return 1
+    if (!a.disabled && b.disabled) return -1
+    return 0
+  }
   const categories = ["Tous", ...Array.from(new Set(models.map((model) => model.category)))]
 
-  const filteredModels = models.filter((model) => {
-    if (model.disabled) return false
-    const matchesSearch =
-      model.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      model.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      model.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-
-    const matchesCategory = selectedCategory === "Tous" || model.category === selectedCategory
-
-    return matchesSearch && matchesCategory
-  })
-
-  const displayedModels = showAllModels ? filteredModels : filteredModels.slice(0, 6)
+  const displayedModels = useMemo(() => {
+    return models
+      .filter((model) => {
+        const matchesSearch = model.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                             model.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                             model.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        
+        const matchesCategory = selectedCategory === "Tous" || model.category === selectedCategory
+        
+        // Filtrer les modèles incompatibles si l'option est désactivée
+        const isCompatibleOrShown = showIncompatibleModels || !model.disabled
+        
+        return matchesSearch && matchesCategory && isCompatibleOrShown
+      })
+      .sort(sortModels) // Trier les modèles (compatibles d'abord)
+      .slice(0, showAllModels ? undefined : 6)
+  }, [models, searchTerm, selectedCategory, showAllModels, showIncompatibleModels])
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-white to-orange-50">
@@ -1173,15 +1196,27 @@ ${model.prompt}`
             <div className="flex items-center space-x-2">
               <Zap className="w-4 h-4 text-orange-600" />
               <p className="text-sm font-medium text-gray-800">
-                Modèles de Visualisation ({models.filter(m => !m.disabled).length})
+                Modèles de Visualisation ({models.filter(m => !m.disabled).length}/{models.length})
               </p>
             </div>
-            <button
-              onClick={() => setShowAllModels(!showAllModels)}
-              className="text-xs text-orange-600 hover:text-orange-700"
-            >
-              {showAllModels ? "Réduire" : "Voir tout"}
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowIncompatibleModels(!showIncompatibleModels)}
+                className={`text-xs px-2 py-1 rounded-md ${
+                  showIncompatibleModels 
+                    ? "bg-orange-100 text-orange-600 hover:bg-orange-200" 
+                    : "bg-green-100 text-green-600 hover:bg-green-200"
+                }`}
+              >
+                {showIncompatibleModels ? "Masquer incompatibles" : "Afficher tous"}
+              </button>
+              <button
+                onClick={() => setShowAllModels(!showAllModels)}
+                className="text-xs text-orange-600 hover:text-orange-700"
+              >
+                {showAllModels ? "Réduire" : "Voir tout"}
+              </button>
+            </div>
           </div>
 
           {/* Search Bar */}
@@ -1230,10 +1265,12 @@ ${model.prompt}`
                   onClick={() => generateVisualization(model.id)}
                   disabled={isGeneratingViz || model.disabled}
                   title={model.disabled ? "Modèle incompatible avec les données" : undefined}
-                  className={`flex items-center space-x-3 w-full px-3 py-3 text-left border rounded-lg transition-all disabled:opacity-50 group ${
+                  className={`flex items-center space-x-3 w-full px-3 py-3 text-left border rounded-lg transition-all group ${
                     isActive
                       ? "bg-gradient-to-r from-green-100 to-emerald-100 border-green-300 ring-2 ring-green-200"
-                      : "bg-orange-50 hover:bg-orange-100 border-orange-200"
+                      : model.disabled
+                        ? "bg-gray-50 border-gray-200 opacity-50 hover:opacity-70" 
+                        : "bg-orange-50 hover:bg-orange-100 border-orange-200"
                   }`}
                 >
                   <div
@@ -1297,7 +1334,7 @@ ${model.prompt}`
             })}
           </div>
 
-          {filteredModels.length === 0 && (
+          {displayedModels.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">Aucun modèle trouvé</p>
@@ -1305,15 +1342,52 @@ ${model.prompt}`
             </div>
           )}
 
-          {!showAllModels && filteredModels.length > 6 && (
+          {!showAllModels && models.filter(model => showIncompatibleModels || !model.disabled).length > 6 && (
             <div className="text-center mt-3">
               <button onClick={() => setShowAllModels(true)} className="text-sm text-orange-600 hover:text-orange-700">
-                +{filteredModels.length - 6} modèles supplémentaires
+                +{models.filter(model => showIncompatibleModels || !model.disabled).length - 6} modèles supplémentaires
               </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Code Editor Section - Affichage du code généré */}
+      {showCodeEditor && generatedCode && (
+        <div className="border-t border-orange-200 p-4 max-h-96 overflow-auto">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center space-x-2">
+              <Brain className="w-4 h-4 text-purple-600" />
+              <p className="text-sm font-medium text-gray-800">Code généré par IA</p>
+            </div>
+            <button
+              onClick={() => setShowCodeEditor(!showCodeEditor)}
+              className="text-xs text-orange-600 hover:text-orange-700"
+            >
+              {showCodeEditor ? "Masquer" : "Afficher"}
+            </button>
+          </div>
+          
+          {/* Affichage du code généré avec style IDE */}
+          <div className="bg-gray-900 text-gray-100 rounded-md p-3 font-mono text-xs overflow-x-auto">
+            <pre>{generatedCode}</pre>
+          </div>
+          
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={() => {
+                // Copier le code dans le presse-papier
+                navigator.clipboard.writeText(generatedCode)
+                  .then(() => alert("Code copié dans le presse-papier"))
+                  .catch(err => console.error("Erreur lors de la copie:", err))
+              }}
+              className="text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-md hover:bg-purple-200"
+            >
+              Copier le code
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Chat Input */}
       <div className="p-4 border-t border-orange-200">
