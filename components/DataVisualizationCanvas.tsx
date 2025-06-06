@@ -10,6 +10,7 @@ import {
   ScatterChart,
   Scatter,
   PieChart as RechartsPieChart,
+  Pie,
   Cell,
   LineChart,
   Line,
@@ -125,11 +126,11 @@ export default function DataVisualizationCanvas({ data, columns, visualizationTy
                   color: "#fff",
                 }}
               />
-              <RechartsPieChart dataKey="value" data={chartData} cx="50%" cy="50%" outerRadius={120}>
+              <Pie dataKey="value" data={chartData} cx="50%" cy="50%" outerRadius={120}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
-              </RechartsPieChart>
+              </Pie>
             </RechartsPieChart>
           </ResponsiveContainer>
         )

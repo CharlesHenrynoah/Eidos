@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const genAI = new GoogleGenerativeAI("AIzaSyB_lBRH0ja-p9-8Xzvzv8RfTU6z5QHKRWs")
+// Use API key from environment variables to avoid exposing secrets in source
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
 export interface DataAnalysis {
   dataType: "numerical" | "categorical" | "mixed" | "temporal"
@@ -145,7 +146,7 @@ export async function generateVisualizationSuggestion(
   userRequest: string,
 ): Promise<string> {
   try {
-    const model = genAI.getGenerativeAI({ model: "gemini-pro" })
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" })
 
     const prompt = `
     L'utilisateur a des données CSV avec les colonnes: ${columns.join(", ")}

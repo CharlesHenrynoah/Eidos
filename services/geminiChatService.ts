@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai"
 
-const genAI = new GoogleGenerativeAI("AIzaSyB_lBRH0ja-p9-8Xzvzv8RfTU6z5QHKRWs")
+// Read API key from environment to keep secrets out of the repository
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
 export interface ChatResponse {
   message: string
