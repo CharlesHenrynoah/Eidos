@@ -23,18 +23,18 @@ interface ModelRequirements {
   }[]
 }
 
-interface VisualizationModel {
-  id: string
-  name: string
-  description: string
-  icon: any
-  category: string
-  tags: string[]
-  complexity: "simple" | "medium" | "advanced"
-  prompt: string
-  requirements: ModelRequirements
-  disabled?: boolean
-}
+  interface VisualizationModel {
+    id: string
+    name: string
+    description: string
+    icon: any
+    category: string
+    tags: string[]
+    complexity: "simple" | "medium" | "advanced"
+    prompt: string
+    requirements?: ModelRequirements
+    disabled?: boolean
+  }
 
 const visualizationModels: VisualizationModel[] = [
   // Nuages de points (Scatter plots)
@@ -939,7 +939,7 @@ const checkModelCompatibility = (model: VisualizationModel, data: any[], columns
     return acc
   }, { numeric: [] as string[], temporal: [] as string[], categorical: [] as string[] })
 
-  const requirements = model.requirements
+  const requirements = model.requirements || {}
   
   // Vérifier les minimums requis
   if (requirements.minNumericColumns && columnTypes.numeric.length < requirements.minNumericColumns) return false
